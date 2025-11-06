@@ -96,7 +96,27 @@ PCM dosyasını JSON'a çevirdiğinizde şu alanları düzenleyebilirsiniz:
 
 ---
 
-## 🔧 Detaylı JSON → PCM (başlık koruyarak)
+## � Uçtan-Uca Akış (Tek Komut)
+
+Tüm adımları (export → birleştir → yeniden üret → isteğe bağlı yama) tek komutta çalıştırmak için:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\run_all.ps1 `
+  -PcmFile .\D347-25.pcm `
+  -DruFile .\D347-25.dru `
+  -OutDir .\out `
+  -PatchCsv .\out\kopma_changes.csv  # İsteğe bağlı
+```
+
+Bu komut sırasıyla:
+1. PCM → JSON (temel)
+2. PCM + DRU → detaylı JSON
+3. Detaylı JSON → yeni PCM (başlık korunur)
+4. Toplu yama (CSV verilirse)
+
+---
+
+## �🔧 Detaylı JSON → PCM (başlık koruyarak)
 
 Detaylı JSON'daki `pcm_header` alanlarını, temel JSON'daki sürüm/test verisiyle birleştirip yeni PCM üretmek için:
 

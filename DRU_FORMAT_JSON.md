@@ -146,12 +146,34 @@ print(f"Maksimum kuvvet: {max(kuvvetler)} N")
 2. `test_summary` tablosunu seç → detaylı test bilgilerini göreceksiniz
 3. `test_grafik` verilerini seç → grafik çizmek için kullanabilirsiniz
 
+## Yama: kopma_uzamasi ve diğer özet değerleri
+
+Detaylı JSON'daki `test_summary` alanlarını (örn. `kopma_uzamasi: 23.49`) değiştirdiğinizde, bu değerlerin PCM dosyasında da değişmesini istiyorsanız:
+
+```powershell
+# CSV oluştur (old,new)
+@"
+old,new
+23.49,30.00
+24.65,29.00
+"@ | Out-File -Encoding UTF8 .\out\kopma_changes.csv
+
+# Toplu yama uygula
+powershell -ExecutionPolicy Bypass -File .\tools\batch_patch_kopma.ps1 `
+  -PcmFile .\out\D347-25_from_detayli.pcm `
+  -ChangesCsv .\out\kopma_changes.csv `
+  -OutFile .\out\D347-25_kopma_batch.pcm
+```
+
+⚠️ **Not**: Yama aracı, değerleri 32-bit little-endian tamsayı (değer×100) olarak arayıp değiştirir. Bu, PCM formatının tam reverse-engineering'i değil, heuristik bir yöntemdir. Diğer alanlar (akma, çekme) için benzer varsayımlar geçerli olabilir; gelişmiş destek sonraki fazdır.
+
 ## Notlar
 
 - ✅ **Türkçe karakter desteği**: JSON UTF-8 formatında, Türkçe karakterler doğru görünür
 - ✅ **DRU ile tam uyumlu**: DRU dosyasındaki tüm bilgiler JSON'da mevcut
 - ✅ **PCM header eklendi**: DRU'da olmayan PCM bilgileri de eklendi
 - ⚠️ **Büyük dosyalar**: Grafik verisi çok büyük olabilir (10,000+ satır)
+- ⚠️ **Yama heuristik**: kopma_uzamasi için patch varsayım temelli; formatın tam dökümanı mevcut değil
 
 ## Sorun Giderme
 
