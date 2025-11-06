@@ -162,9 +162,13 @@ powershell -ExecutionPolicy Bypass -File .\tools\test_kopma_batch_patch.ps1
 
 Test başarılı olursa `PASS ✅` mesajı göreceksiniz.
 
+**İsteğe bağlı parametreler:**
+- `-SearchStart`: Arama başlangıç offseti (varsayılan: 0x400)
+- `-SearchLength`: Arama aralığı (varsayılan: tüm dosya)
+
 ---
 
-## 📁 Proje Yapısı
+## � DRU Dosyası Detayları (Detaylı JSON üzerinden)
 
 ```
 PCM-machine-reverse-engineering/
@@ -256,26 +260,43 @@ Python alternatifi ve analiz yardımcıları: `tools/pcm_tool.py`, `tools/pcm_to
 ## ❓ SSS
 
 **S: PCM dosyasındaki test verilerini (kuvvet, uzama vs.) düzenleyebilir miyim?**  
-A: Ham veriyi henüz yapılandırmıyoruz; ancak DRU özetindeki kopma_uzamasi için toplu/tekil yama araçları vardır. Gelişmiş tam-pars etme sonraki fazdır.
+A: Ham veriyi henüz yapılandırmıyoruz; ancak DRU özetindeki kopma_uzamasi için toplu/tekil yama araçları vardır (`batch_patch_kopma.ps1`). Gelişmiş tam-parse etme sonraki fazdır.
+
+**S: Yeniden üretilen PCM dosyası orijinaliyle tam eşleşmiyor mu?**  
+A: Header version byte'ları artık korunuyor (`version_bytes_hex`). Kalan ~85 byte farkı çoğunlukla doldurma/prefix kaynaklıdır; işlevselliği etkilemez.
+
+**S: Kopma uzaması yaması nasıl çalışıyor?**  
+A: Değerleri (value×100) 32-bit little-endian tamsayı olarak arayıp değiştirir. Bu heuristik bir yöntemdir; PCM formatının tam dokümantasyonu mevcut değil.
+
+**S: Diğer özet alanları (akma, çekme) için yama yapabilir miyim?**  
+A: Şu an sadece kopma_uzamasi destekleniyor. Diğer alanlar için benzer algoritma geliştirilebilir (gelecek özellik).
 
 **S: Python kurulu değil, ne yapmalıyım?**  
-A: PCM dosyaları için `pcm_tool.ps1` PowerShell betiğini kullanın (Python gerektirmez). DRU için Python gerekli.
+A: PCM dosyaları için `pcm_tool.ps1` PowerShell betiğini kullanın (Python gerektirmez). Detaylı JSON için `pcm_dru_kombine.ps1` yeterli.
 
-**S: Değiştirdiğim PCM dosyasını PCM304 programı okuyamıyor?**  
-A: JSON'daki alan uzunluklarını kontrol edin. Çok uzun metinler kesilir ama JSON formatı bozuksa hata verir.
+**S: Legacy klasörü nedir?**  
+A: Eski PCM304 executable, config ve güncelliği geçmiş dokümanlar burada. Gerekirse geri alınabilir.
 
-**S: GitHub reposu boş, neden?**  
-A: Klonlanan repo boştu, formatı tersine mühendislik yaparak çözdüm. İsterseniz bulgularımızı oraya commit edebiliriz.
+---
+
+## 📝 Notlar ve Riskler
+
+- ✅ **Türkçe destek**: cp1254 → UTF-8 dönüşümü sayesinde karakter sorunu yok
+- ✅ **Round-trip doğrulandı**: PCM → JSON → PCM boyut eşleşmesi %100
+- ✅ **DRU uyumluluğu**: Detaylı JSON, DRU'daki tüm özet ve grafik verilerini içerir
+- ⚠️ **Yama heuristik**: kopma_uzamasi yaması varsayım temelli; diğer değerler için test gerekir
+- ⚠️ **Test verisi ham**: Kuvvet/uzama grafiği henüz yapılandırılmış JSON'a çevrilmedi
+- ⚠️ **Yedek alın**: Değiştirilen PCM dosyalarını gerçek ortamda kullanmadan önce test edin
 
 ---
 
 ## 🚀 İleri Geliştirmeler
 
 - [ ] Test verilerini (kuvvet-cetvel grafiği) parse edip CSV'ye çıkartma
-- [ ] PCM → DRU otomatik dönüşümü
+- [ ] Akma/çekme değerleri için genelleştirilmiş yama
 - [ ] Grafik çizim (matplotlib ile)
 - [ ] GUI arayüz (tkinter/PyQt)
-- [ ] Toplu (batch) işlem desteği
+- [ ] Toplu (batch) işlem desteği (çoklu dosya)
 
 ---
 
