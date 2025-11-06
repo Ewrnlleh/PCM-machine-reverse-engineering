@@ -156,7 +156,35 @@ powershell -ExecutionPolicy Bypass -File .\tools\batch_patch_kopma.ps1 `
 3) Otomatik test:
 
 ```powershell
+```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\test_kopma_batch_patch.ps1
+```
+
+Test başarılı olursa `PASS ✅` mesajı göreceksiniz.
+
+---
+
+## 📁 Proje Yapısı
+
+```
+PCM-machine-reverse-engineering/
+├── tools/
+│   ├── pcm_tool.ps1              # PCM <-> JSON (PowerShell)
+│   ├── pcm_tool.py               # PCM <-> JSON (Python alternatifi)
+│   ├── pcm_dru_kombine.ps1       # PCM+DRU -> detaylı JSON
+│   ├── pcm_to_dru_format.py      # (Python) eşdeğer detaylı JSON
+│   ├── detayli_to_pcm.ps1        # Detaylı JSON + fallback JSON -> PCM
+│   ├── patch_kopma_value.ps1     # Tekil kopma_uzamasi yaması
+│   ├── batch_patch_kopma.ps1     # Toplu kopma_uzamasi yaması (CSV)
+│   ├── test_kopma_batch_patch.ps1 # Otomatik yama testi
+│   └── run_all.ps1               # Uçtan-uca akış (orkestrasyon)
+├── out/                          # Çıktı klasörü (JSON, PCM vb.)
+├── legacy/                       # Eski uygulama dosyaları (EXE, CFG, MLZ)
+├── D347-25.pcm                   # Örnek PCM dosyası
+├── D347-25.dru                   # Örnek DRU dosyası
+├── README.md                     # Bu dosya
+└── DRU_FORMAT_JSON.md            # Detaylı JSON format dokümantasyonu
+```
 ```
 
 Notlar:
