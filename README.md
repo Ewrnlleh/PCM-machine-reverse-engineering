@@ -4,13 +4,34 @@ PCM304 yazılımı için .pcm ve .dru dosyalarını metin formatına çevirip d�
 
 ## 🎯 Hızlı Başlangıç
 
+### ⭐ YENİ: PCM + DRU Birleşik Format (ÖNERİLEN)
+
+DRU dosyasındaki **tüm test bilgilerini** (akma, çekme, grafik verisi vb.) içeren detaylı JSON:
+
+```powershell
+# PCM ve DRU'yu birleştir - detaylı JSON oluştur
+powershell -ExecutionPolicy Bypass -File "tools\pcm_dru_kombine.ps1" `
+  -PcmFile "D347-25.pcm" `
+  -DruFile "D347-25.dru" `
+  -OutFile "out\D347-25_detayli.json"
+```
+
+Bu JSON içerir:
+- ✅ PCM header bilgileri (numune no, tarih, test standardı)
+- ✅ **9 testin özet bilgileri** (çap, akma, çekme, kopma uzaması vb.)
+- ✅ **13,000+ veri noktası** (zaman-kuvvet-uzama grafik verisi)
+
+📖 Detaylı kullanım: [DRU_FORMAT_JSON.md](DRU_FORMAT_JSON.md)
+
+---
+
 ### PCM Dosyası (.pcm → JSON → .pcm)
 
 **PowerShell ile** (Python gerektirmez):
 
 ```powershell
 # PCM'i JSON'a çevir
-.\tools\pcm_tool.ps1 export -PcmFile "PCM-machine-reverse-engineering\D347-25.pcm" -OutFile "out\D347-25.json"
+.\tools\pcm_tool.ps1 export -PcmFile "D347-25.pcm" -OutFile "out\D347-25.json"
 
 # JSON'u düzenle (VS Code, Notepad++ vs.)
 
