@@ -1,10 +1,10 @@
-# PCM & DRU Dosya Dönüştürücü
+# PCM & DRU Dönüştürücü ve Yama Araçları
 
-PCM304 yazılımı için .pcm ve .dru dosyalarını metin formatına çevirip düzenledikten sonra geri binary/text formatına dönüştürmek için araçlar.
+PCM304 için .pcm/.dru dosyalarını okunabilir JSON'a çevirir, düzenler ve tekrar .pcm üretir; ayrıca DRU tarzı detaylı JSON ve toplu değer yama (kopma_uzaması vb.) desteği sağlar.
 
 ## 🎯 Hızlı Başlangıç
 
-### ⭐ YENİ: PCM + DRU Birleşik Format (ÖNERİLEN)
+### ⭐ YENİ: PCM + DRU Birleşik Detaylı JSON (ÖNERİLEN)
 
 DRU dosyasındaki **tüm test bilgilerini** (akma, çekme, grafik verisi vb.) içeren detaylı JSON:
 
@@ -39,25 +39,13 @@ Bu JSON içerir:
 .\tools\pcm_tool.ps1 build -JsonFile "out\D347-25.json" -OutFile "D347-25_yeni.pcm"
 ```
 
-**Python ile** (Python 3.8+):
+Not: Python alternatifi de mevcuttur (`tools/pcm_tool.py`).
 
-```powershell
-python tools/pcm_tool.py export "PCM-machine-reverse-engineering\D347-25.pcm" --out "out\D347-25.json"
-python tools/pcm_tool.py build --json "out\D347-25.json" --out "D347-25_yeni.pcm"
-```
+### DRU Tarzı Görünüm (Detaylı JSON)
 
-### DRU Dosyası (.dru → CSV → .dru)
+DRU dosyasındaki tablo ve grafik görüntüsünü JSON'da almak için üstteki birleşik komutu kullanın. Ayrıntı: [DRU_FORMAT_JSON.md](DRU_FORMAT_JSON.md)
 
-```powershell
-# DRU'yu CSV'lere ayır
-python tools/dru_tool.py export D347-25.dru --outdir out
-
-# CSV'leri düzenle (Excel, LibreOffice vs.)
-# out/summary.csv ve out/grafik.csv
-
-# Yeni DRU oluştur
-python tools/dru_tool.py build --summary out/summary.csv --grafik out/grafik.csv --out D347-25_yeni.dru
-```
+Python alternatifi: `tools/pcm_to_dru_format.py` aynı çıktı yapısını üretir.
 
 ---
 
@@ -81,6 +69,7 @@ PCM dosyasını JSON'a çevirdiğinizde şu alanları düzenleyebilirsiniz:
 ```json
 {
   "header": "PCM304 V7.2.11_",
+  "version_bytes_hex": "0701010000000000",
   "test_count": 301,
   "numune_no": "D347-25",
   "tarih": "26.08.25",
@@ -102,11 +91,61 @@ PCM dosyasını JSON'a çevirdiğinizde şu alanları düzenleyebilirsiniz:
   - laboratuvar: 80 karakter
   - malzeme_kodu: 50 karakter
   - musteri_no: 40 karakter
-- **Test Verisi**: Şu an ham hex olarak saklanıyor. Gerçek test verilerini (kuvvet, cetvel değerleri vs.) parse etmek için ileri geliştirme yapılabilir.
+- **Version baytları**: Artık otomatik korunuyor (`version_bytes_hex`); yeniden inşada başlık birebir eşleşir.
+- **Test verisi**: Şu an ham hex olarak saklanıyor. Gerçek test verilerini (kuvvet, cetvel değerleri vs.) parse etmek ileri geliştirme kapsamındadır.
 
 ---
 
-## 📊 DRU Dosyası Detayları
+## 🔧 Detaylı JSON → PCM (başlık koruyarak)
+
+Detaylı JSON'daki `pcm_header` alanlarını, temel JSON'daki sürüm/test verisiyle birleştirip yeni PCM üretmek için:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\detayli_to_pcm.ps1 `
+  -DetayliJson .\out\D347-25_detayli.json `
+  -FallbackJson .\out\D347-25.json `
+  -OutJson .\out\D347-25_from_detayli.json `
+  -OutPcm .\out\D347-25_from_detayli.pcm
+```
+
+---
+
+## 🩹 Toplu Yama: kopma_uzamasi (örn. 23.49 → 30.00)
+
+DRU özetindeki kopma_uzamasi değerlerini PCM içinde güncellemek için toplu yama aracı:
+
+1) CSV oluşturun (old,new):
+
+```powershell
+@"
+old,new
+23.49,30.00
+24.65,29.00
+"@ | Out-File -Encoding UTF8 .\out\kopma_changes.csv
+```
+
+2) Toplu yama:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\batch_patch_kopma.ps1 `
+  -PcmFile .\out\D347-25_from_detayli.pcm `
+  -ChangesCsv .\out\kopma_changes.csv `
+  -OutFile .\out\D347-25_kopma_batch.pcm
+```
+
+3) Otomatik test:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\test_kopma_batch_patch.ps1
+```
+
+Notlar:
+- Yama, değerleri 32‑bit little-endian tamsayı (değer×100) olarak arayıp değiştirir.
+- Gerekirse `-SearchStart`/`-SearchLength` ile arama aralığını sınırlayabilirsiniz.
+
+---
+
+## 📊 DRU Dosyası Detayları (Detaylı JSON üzerinden)
 
 DRU dosyası düz metin (text) formatındadır ancak Windows-1254 kodlama ve TAB ayracı kullanır.
 
@@ -122,15 +161,7 @@ DRU dosyası düz metin (text) formatındadır ancak Windows-1254 kodlama ve TAB
 
 ### Kullanım
 
-```powershell
-# Export
-python tools/dru_tool.py export D347-25.dru --outdir out
-
-# CSV'leri Excel ile düzenle (UTF-8 BOM ile kaydedilir, Türkçe karakterler sorunsuz)
-
-# Build
-python tools/dru_tool.py build --summary out/summary.csv --grafik out/grafik.csv --out D347-25_yeni.dru
-```
+Detaylı JSON kullanarak DRU verilerine denk düşen özet ve grafik bilgilerini analiz edebilirsiniz (bkz. DRU_FORMAT_JSON.md).
 
 ### Format Notları
 
@@ -141,18 +172,9 @@ python tools/dru_tool.py build --summary out/summary.csv --grafik out/grafik.csv
 
 ---
 
-## 🔍 Keşif Aracı (pcm_dump.py)
+## 🔍 İsteğe Bağlı
 
-Bilinmeyen PCM formatlarını incelemek için hex döküm aracı:
-
-```powershell
-python tools/pcm_dump.py .\ornek.pcm --outdir out_pcm
-```
-
-Çıktı:
-- Hex dökümü (ilk/son 256 bayt)
-- ASCII ve cp1254 string'ler
-- Rapor dosyası: `out_pcm\ornek.pcm.report.txt`
+Python alternatifi ve analiz yardımcıları: `tools/pcm_tool.py`, `tools/pcm_to_dru_format.py`.
 
 ---
 
@@ -169,13 +191,16 @@ python tools/pcm_dump.py .\ornek.pcm --outdir out_pcm
 ```
 .
 ├── tools/
-│   ├── pcm_tool.ps1      # PowerShell PCM dönüştürücü (Python gerektirmez)
-│   ├── pcm_tool.py       # Python PCM dönüştürücü
-│   ├── dru_tool.py       # DRU dönüştürücü
-│   └── pcm_dump.py       # Hex döküm/analiz aracı
-├── PCM-machine-reverse-engineering/
-│   └── D347-25.pcm       # Örnek PCM dosyası
-└── README.md             # Bu dosya
+│   ├── pcm_tool.ps1              # PCM <-> JSON (PowerShell)
+│   ├── pcm_tool.py               # PCM <-> JSON (Python alternatifi)
+│   ├── pcm_dru_kombine.ps1       # PCM+DRU -> detaylı JSON
+│   ├── pcm_to_dru_format.py      # (Python) eşdeğer detaylı JSON
+│   ├── detayli_to_pcm.ps1        # Detaylı JSON + fallback JSON -> PCM
+│   ├── patch_kopma_value.ps1     # Tekil kopma_uzamasi yaması
+│   └── batch_patch_kopma.ps1     # Toplu kopma_uzamasi yaması (CSV)
+├── D347-25.pcm
+├── D347-25.dru
+└── README.md
 ```
 
 ---
@@ -183,7 +208,7 @@ python tools/pcm_dump.py .\ornek.pcm --outdir out_pcm
 ## ❓ SSS
 
 **S: PCM dosyasındaki test verilerini (kuvvet, uzama vs.) düzenleyebilir miyim?**  
-A: Şu an test_data_raw_hex alanı ham hex formatında. İleri versiyonlarda bu alanı parse edip yapılandırılmış JSON'a çevirebiliriz. Şimdilik sadece başlık alanları düzenlenebilir.
+A: Ham veriyi henüz yapılandırmıyoruz; ancak DRU özetindeki kopma_uzamasi için toplu/tekil yama araçları vardır. Gelişmiş tam-pars etme sonraki fazdır.
 
 **S: Python kurulu değil, ne yapmalıyım?**  
 A: PCM dosyaları için `pcm_tool.ps1` PowerShell betiğini kullanın (Python gerektirmez). DRU için Python gerekli.
