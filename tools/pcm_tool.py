@@ -52,6 +52,8 @@ def parse_pcm(path: str) -> Dict[str, Any]:
     
     # Header
     header = data[0:16].decode("ascii", errors="replace").rstrip('\x00')
+    # Capture version bytes block (0x10..0x18)
+    version_bytes_hex = data[0x10:0x18].hex()
     
     # Test count at offset 0x38 (4-byte little-endian)
     test_count = struct.unpack("<I", data[0x38:0x3C])[0]
@@ -71,6 +73,7 @@ def parse_pcm(path: str) -> Dict[str, Any]:
     
     return {
         "header": header,
+        "version_bytes_hex": version_bytes_hex,
         "test_count": test_count,
         "numune_no": numune_no,
         "tarih": tarih,
@@ -94,9 +97,20 @@ def build_pcm(data: Dict[str, Any], out_path: str) -> None:
     pcm_bytes[0:16] = write_string(header, 16)
     
     # Write version bytes (offset 0x10-0x17, observed pattern)
-    pcm_bytes[0x10] = 0x07  # Version byte pattern from original
-    pcm_bytes[0x11] = 0x01
-    pcm_bytes[0x12] = 0x01
+    ver_hex = data.get("version_bytes_hex")
+    if isinstance(ver_hex, str) and len(ver_hex) >= 2:
+        try:
+            ver_bytes = bytes.fromhex(ver_hex)[:8]
+            pcm_bytes[0x10:0x10+len(ver_bytes)] = ver_bytes
+        except ValueError:
+            # Fallback to default if parsing fails
+            pcm_bytes[0x10] = 0x07
+            pcm_bytes[0x11] = 0x01
+            pcm_bytes[0x12] = 0x01
+    else:
+        pcm_bytes[0x10] = 0x07
+        pcm_bytes[0x11] = 0x01
+        pcm_bytes[0x12] = 0x01
     
     # Write test count (offset 0x38, 4-byte little-endian)
     test_count = data.get("test_count", 1)

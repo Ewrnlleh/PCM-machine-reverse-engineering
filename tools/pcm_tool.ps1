@@ -43,6 +43,8 @@ function Export-Pcm {
     
     # Parse header
     $header = [System.Text.Encoding]::ASCII.GetString($data[0..15]).TrimEnd([char]0)
+    # Capture version byte block (0x10..0x17)
+    $versionBytesHex = [BitConverter]::ToString($data[0x10..0x17]).Replace('-','')
     $testCount = [BitConverter]::ToInt32($data, 0x38)
     
     # Parse fields
@@ -58,6 +60,7 @@ function Export-Pcm {
     
     $obj = @{
         header = $header
+        version_bytes_hex = $versionBytesHex
         test_count = $testCount
         numune_no = $numuneNo
         tarih = $tarih
@@ -88,10 +91,27 @@ function Build-Pcm {
     $headerBytes = Write-PcmString $obj.header 16
     [Array]::Copy($headerBytes, 0, $pcmBytes, 0, 16)
     
-    # Version pattern
-    $pcmBytes[0x10] = 0x07
-    $pcmBytes[0x11] = 0x01
-    $pcmBytes[0x12] = 0x01
+    # Version bytes (prefer JSON-provided block 0x10..0x17)
+    if ($obj.PSObject.Properties.Name -contains 'version_bytes_hex' -and $obj.version_bytes_hex -and $obj.version_bytes_hex.Length -ge 2) {
+        try {
+            $verList = New-Object System.Collections.Generic.List[byte]
+            for ($i = 0; $i -lt $obj.version_bytes_hex.Length; $i += 2) {
+                if ($i/2 -ge 8) { break }
+                $hexByte = $obj.version_bytes_hex.Substring($i, [Math]::Min(2, $obj.version_bytes_hex.Length - $i))
+                $verList.Add([Convert]::ToByte($hexByte, 16))
+            }
+            $verBytes = $verList.ToArray()
+            for ($i = 0; $i -lt $verBytes.Length; $i++) {
+                $pcmBytes[0x10 + $i] = $verBytes[$i]
+            }
+        } catch {
+            # Fallback to default if parsing fails
+            $pcmBytes[0x10] = 0x07; $pcmBytes[0x11] = 0x01; $pcmBytes[0x12] = 0x01
+        }
+    } else {
+        # Default version pattern observed in sample
+        $pcmBytes[0x10] = 0x07; $pcmBytes[0x11] = 0x01; $pcmBytes[0x12] = 0x01
+    }
     
     # Test count
     $testCountBytes = [BitConverter]::GetBytes([int]$obj.test_count)
